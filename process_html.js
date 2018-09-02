@@ -8,26 +8,52 @@ const fs = require('fs');
 
 const dir = path.join('tmp', 'converted_htmls');
 
+const isDebug = process.env.NODE_ENV === 'development';
+
 function processHtml(data) {
   //console.log(data.slice(100, 100+100));
   let $ = cheerio.load(data);
-  let herbNameSelector = `
-body > table > tbody > tr:nth-child(3) > td > table > tbody > tr:nth-child(2) > td.content_board > table:nth-child(1) > tbody > tr:nth-child(1) > td:nth-child(2) > b
-  `;
-  let herbName = $(herbNameSelector).text().trim();
+  let $content = $('.content_board');
+
+  let herbNameSelector = `table:nth-child(1) > tbody > tr:nth-child(1) > td:nth-child(2) > b`;
+  let herbName = $content.find(herbNameSelector).text().trim();
+
   if (!herbName) {
-    throw Error('No herb name found. Selector wrong?');
+    console.log()
+    // check if the page is empty in fact...
+    let pvalue = '';
+    let paragraphs = $content.find('> p').map((i, e) => {
+      console.log(e.childElementCount);
+      if (e.children.length === 1 && e.children[0].type === 'text') {
+        pvalue += $(e).text().trim();
+      }
+    });
+    //console.log(pvalue);
+    if (pvalue.trim()) {
+      // there are text in the page... but somehow we failed to get the herb name
+      throw Error('No herb name is found but the content is not empty. Selector wrong?');
+    } else {
+      // nothing in the page. skip this one... probably so dummy page
+      console.warn('No herb name is found and the content is empty too. skip this page.')
+      return null;
+    }
   }
+
+  let herbNickNameSelector = `table:nth-child(1) > tbody > tr:nth-child(1) > th`;
+  let herbNickNames = $content.find(herbNickNameSelector).text().trim();
 
   let herb = {
     name: herbName,
+    nickNames: herbNickNames,
   };
-  let $content = $('.content_board');
   let rawText = $content.text();
   let texts = $content.contents();
   // skip the first two for menu.
   let keys = [];
   let vals = [];
+  let currentState = 'init';
+  let bufferedValues = [];
+
   for (let i = 2; i < texts.length; i++) {
     let e =  texts[i];
     //console.log(e.nodeType);
@@ -38,8 +64,19 @@ body > table > tbody > tr:nth-child(3) > td > table > tbody > tr:nth-child(2) > 
     } else if (e.nodeType === 1) {
       switch (e.tagName) {
         case 'p':
-          s = $(e).text().trim();
+          if (isDebug) { console.log(_.pick(e, 'children')); }
+          //console.log(e.children.length);
+          let textChildren = _.select(e.children, (child, i) => {
+            return child.type === 'text';
+          });
+          if (e.children.length > 0 && textChildren) {
+            s = _.map(textChildren, (c, i) => { return c.data }).join('\n');
+          } else {
+            // this is the ads tag...
+            s = '';
+          }
           break;
+        case 'ul':
         case 'ol':
           s = $(e).find('li').map((i, e) => { return $(e).text().trim() }).get().join('\n');
           break;
@@ -50,17 +87,96 @@ body > table > tbody > tr:nth-child(3) > td > table > tbody > tr:nth-child(2) > 
     if (!s) {
       continue;
     }
-    //console.log(s);
+    if (isDebug) { console.log(`${currentState}: ${s}`); }
     if (s[0] === '【') {
+      if (currentState === 'value') {
+        vals.push(bufferedValues.join('\n'));
+        if (isDebug) { 
+          console.log('Save the buffered values');
+          console.log(`keys = ${keys}`);
+          console.log(`vals = ${vals}`);
+        }
+      }
+      bufferedValues = [];
+      currentState = 'key';
       keys.push(s);
     } else {
-      vals.push(s);
+      currentState = 'value';
+      bufferedValues.push(s);
     }
     //let key = $(e).text().trim();
   };
+  vals.push(bufferedValues.join('\n'));
 
   herb = _.defaults(herb, _.object(keys, vals));
+  chineseKeysTranslation = {
+    '【品種來源】': 'species',
+    '【性味歸經】':'attributes', 
+    '【功效】': 'effect', 
+    '【主治】': 'usage', 
+    '【文獻別錄】': 'reference', 
+    '【用法用量】': 'dosage', 
+    '【現代藥理】': 'pharmacology', 
+    '【注意禁忌】': 'remark', 
+    '【性狀】': 'physical_properties',
+  };
+  _.each(chineseKeysTranslation, (engName, chiName) => {
+    if (_.has(herb, chiName)) {
+      herb[engName] = herb[chiName];
+      delete herb[chiName];
+    } else {
+      // Missing name. back fill
+      console.warn(`Missing ${chiName} in ${herbName}`);
+      herb[engName] = '';
+    }
+  });
   return herb;
+}
+
+
+function export_results(results) {
+  if (isDebug) {
+    console.log(results);
+  }
+
+  const stringify = require('csv-stringify');
+  // `columns` order matters
+  // `columns` key == the object's key, value == the output csv name
+  let columns = {
+    name: '藥名',
+    nickNames: '別名',
+    'species': '品種來源',
+    'attributes': '性味歸經', 
+    'effect': '功效', 
+    'usage': '主治', 
+    'reference': '文獻別錄', 
+    'dosage': '用法用量', 
+    'pharmacology': '現代藥理', 
+    'remark': '注意禁忌',
+    'physical_properties': '性狀',
+  };
+
+  let formatters = {
+    effect: function(value) {
+      return _.isArray(value) ? value.join('\n') : value;
+    },
+    dosage: function(value) {
+      return _.isArray(value) ? value.join('\n') : value;
+    },
+    reference: function(value) {
+      return _.isArray(value) ? value.join('\n') : value;
+    },
+  };
+  let options = {
+    header: true,
+    columns: columns,
+    formatters: formatters,
+  };
+  stringify(results, options, (err, output) => {
+    fs.writeFile('herbs.csv', output, {encoding: 'utf8'});
+  });
+
+  fs.writeFile('herbs.json', JSON.stringify(results), {encoding: 'utf8'});
 }
 
 fs.readdir(dir, (err, files) => {
@@ -70,7 +186,16 @@ fs.readdir(dir, (err, files) => {
   }
 
   // debug
-  files = files.slice(0, 10);
+  if (isDebug) {
+    let fileName = process.env.FILENAME;
+    if (fileName) {
+      files = [fileName];
+    } else {
+      let start = parseInt(process.env.START || '0', 10);
+      let size = parseInt(process.env.LENGTH || '10', 10);
+      files = files.sort().slice(start, start + size);
+    }
+  }
 
   // Skip files that does not match .html files e.g. .DS_Store file
   files = files.filter((file) => {
@@ -81,6 +206,8 @@ fs.readdir(dir, (err, files) => {
     return true;
   });
 
+  // should use processed instead of results.length to track the progress.
+  let processed = 0;
   let results = [];
   files.map((file) => {
     console.log(`processing file: ${file}`);
@@ -94,13 +221,18 @@ fs.readdir(dir, (err, files) => {
 
       try {
         let herb = processHtml(data);
-        results.push(herb);
-        if (results.length === files.length) {
-          console.log(results);
+        processed += 1;
+        if (herb) {
+          results.push(herb);
         }
       } catch (e) {
         console.error(`Failed to process file ${file}`);
         throw e;
+      }
+
+      // All files are processed successfully.
+      if (processed === files.length) {
+        export_results(results);
       }
     });
   });

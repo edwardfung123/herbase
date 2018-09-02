@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "description": "A simple Chinese herb database",
   "main": "main.js",
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "cheerio": "1.0.0-rc.2",
+    "csv-stringify": "^4.0.1",
     "iconv-lite": "0.4.24",
     "request": "2.88.0",
     "underscore": "^1.9.1"
   },
   "scripts": {
-	"main": "node process_html.js",
+    "main": "node process_html.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
