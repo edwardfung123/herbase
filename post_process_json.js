@@ -28,48 +28,27 @@ const MERIDIAN_ENG_CHINESE = {
 const MERIDIAN_CHINESE_ENG = _.invert(MERIDIAN_ENG_CHINESE);
 
 const TASTE_ENG_CHINESE = {
-    bitter: '苦',   // 
-    sweet: '甘',    // 
-    spicy: '辛', // 
-    salty: '咸', // 
-    sour: '酸', // 
-    hot: '燥', // 
-    slight_bitter: '微苦',
-    slight: '淡',
+    bitter        : '苦',
+    sweet         : '甘',
+    spicy         : '辛',
+    salty         : '咸',
+    sour          : '酸',
+    hot           : '燥',
+    slight_bitter : '微苦',
+    plain         : '淡',
 }
 
 const TASTE_CHINESE_ENG = _.invert(TASTE_ENG_CHINESE);
 
-function processHerb(herb) {
-  // computed properties
-  // From 性味歸經 -> 性，味_，歸_經
-  let processed = _.defaults({}, herb, {
-    nature: '',         // 性
-    taste_bitter: '',   // 苦
-    taste_sweet: '',    // 甘
-    taste_spicy: '', // 辛
-    taste_salty: '', // 咸
-    taste_sour: '', // 酸
-    taste_hot: '', // 燥
-    taste_slight_bitter: '',
-    taste_slight: '',
-    // see https://blog.fntsr.tw/articles/2016/09/18/name-of-meridian-and-its-alphabetic-code/
-    meridian_lung: '', // 歸肺經
-    meridian_large_intestine: '', // 歸大腸經
-    meridian_stomach: '', // 歸胃經
-    meridian_spleen: '', // 歸脾經
-    meridian_heart: '', // 歸心經
-    meridian_small_intestine: '', // 歸小腸經
-    meridian_bladder: '', // 歸膀胱經
-    meridian_kidney: '', // 歸腎經
-    meridian_pericardium: '', // 心包經
-    meridian_triple_energize: '', // 歸三焦經
-    meridian_gallbladder: '', // 歸膽經
-    meridian_liver: '', // 歸肝經
-    vessel_governor: '', // 督脈
-    vessel_conception: '', // 任脈
-    toxic: '',
-  });
+const HERB_TASTE_DEFAULTS = _.object(_.map(TASTE_ENG_CHINESE, (v, k) => {
+  return [`taste_${k}`, 0];
+}));
+
+const HERB_MERIDIAN_DEFAULTS = _.object(_.map(MERIDIAN_ENG_CHINESE, (v, k) => {
+  return [`meridian_${k}`, 0];
+}));
+
+function processHerbAttributes(herb) {
   let attributes = herb.attributes;
   let attributesParts = Array.prototype.concat.apply([], _.map(attributes.split(/。」|。/), (s) => {
     let i = s.indexOf('：「');
@@ -82,8 +61,7 @@ function processHerb(herb) {
   }));
   attributesParts = _.select(attributesParts, (p) => p);
   attributesParts = _.map(attributesParts, (p) => p.trim());
-  console.log(attributes);
-  console.log(attributesParts);
+  console.log(`attributesParts = ${attributesParts}`);
   _.each(attributesParts, (p) => {
     let meridianGroups = meridianRegex.exec(p);
     let tasteGroups = tasteRegex.exec(p);
@@ -94,8 +72,9 @@ function processHerb(herb) {
       //console.log(meridians);
       _.each(meridians, (m) => {
         let organ = MERIDIAN_CHINESE_ENG[m];
+        let key = `meridian_${organ}`;
         //console.log(organ);
-        processed[`meridian_${organ}`] = 1;
+        herb[key] = 1;
       });
     }
     if (tasteGroups) {
@@ -104,15 +83,37 @@ function processHerb(herb) {
       console.log(tastes);
       _.each(tastes, (t) => {
         let taste = TASTE_CHINESE_ENG[t];
-        let key = `taste_${taste}`
+        let key = `taste_${taste}`;
         console.log(key);
-        processed[key] = 1;
+        herb[key] = 1;
       });
     }
     if (natureGroups) {
       console.log(`${p} looks like nature. ${natureGroups[1]}`);
+      herb.nature = natureGroups[0];
     }
   }); 
+}
+
+function processHerb(herb) {
+  // computed properties
+  // From 性味歸經 -> 性，味_，歸_經
+  let processed = _.defaults({}, herb, {
+    nature: '',         // 性
+    // see https://blog.fntsr.tw/articles/2016/09/18/name-of-meridian-and-its-alphabetic-code/
+    vessel_governor: '', // 督脈
+    vessel_conception: '', // 任脈
+    toxic: '',
+  },
+  HERB_TASTE_DEFAULTS,
+  HERB_MERIDIAN_DEFAULTS
+  );
+  console.log(`attributes = ${herb.attributes}`);
+  if (herb.attributes) {
+    processHerbAttributes(processed);
+  }
+
+  // Verify tastes, meridians, natures, toxic are set.
   return processed;
 }
 
