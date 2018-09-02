@@ -45,6 +45,7 @@ function processHtml(data) {
   let herb = {
     name: herbName,
     nickNames: herbNickNames,
+    source: '中藥學',
   };
   let rawText = $content.text();
   let texts = $content.contents();
@@ -145,6 +146,7 @@ function export_results(results) {
   let columns = {
     name: '藥名',
     nickNames: '別名',
+    'source': '資料來源',
     'species': '品種來源',
     'attributes': '性味歸經', 
     'effect': '功效', 
