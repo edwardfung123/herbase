@@ -17,25 +17,26 @@ get_file_lists:
 	s=601 e=650 node filelist.js  > ./tmp/part13.txt
 
 download:
+	# --auto-file-renaming=false to not to redownload the existing files!
 	cd ./tmp/ ;\
-	aria2c -j 1 -x 2 -i part1.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part2.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part3.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part4.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part5.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part6.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part7.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part8.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part9.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part10.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part11.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part12.txt  -d htmls/ ; sleep 5 ;\
-	aria2c -j 1 -x 2 -i part13.txt  -d htmls/ ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part1.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part2.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part3.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part4.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part5.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part6.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part7.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part8.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part9.txt  -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part10.txt -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part11.txt -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part12.txt -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
+	aria2c -j 1 -x 2 -i part13.txt -d htmls/ --auto-file-renaming=false ; sleep 5 ;\
 	cd ..
 
 replace:
-	echo "Remember to replace special char in some files because the html is encoded with BIG5-eten extension."
-	echo "For example, the file \"index.466.htm\" contains special characters."
+	@echo "Remember to replace special char in some files because the html is encoded with BIG5-eten extension."
+	@echo "For example, the file \"index.466.htm\" contains special characters."
 
 convert:
 	# big5 -> utf8
@@ -48,13 +49,13 @@ convert:
 	cd ../../
 
 parse:
-	npm run main
+	rm herbs.csv herbs.json ; npm run main
 
 clean:
-	rm ./tmp/part*.txt
-	rm -r ./htmls/ ./converted_htmls/
-	echo "Cleaned."
+	rm -f ./tmp/part*.txt
+	rm -rf ./tmp/htmls/ ./tmp/converted_htmls/
+	@echo "Cleaned."
 
 
 all: get_file_lists download replace convert parse
-	echo "Done!"
+	@echo "Done!"
