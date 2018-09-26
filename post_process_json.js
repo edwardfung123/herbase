@@ -144,11 +144,36 @@ function processHerb(herb) {
   return processed;
 }
 
-let herbs = require('./herbs.json');
-herbs = herbs.slice(20, 20+10);
-let processedHerbs = _.map(herbs, processHerb);
 
-console.log(processedHerbs);
+function main(srcFileName, dstFileName, offset, hits) {
+  offset = offset < 0 ? 0 : offset;
+  hits = hits < 0 ? -1 : hits;
+  const fs = require('fs');
+
+  fs.readFile(srcFileName, 'utf8', (err, data) => {
+    let herbs = JSON.parse(data);
+
+    if (hits < 0) {
+      herbs = herbs.slice(offset);
+    } else {
+      herbs = herbs.slice(offset, offset + hits);
+    }
+
+    let processedHerbs = _.map(herbs, processHerb);
+    fs.writeFile(dstFileName, JSON.stringify(processedHerbs),(err) => {
+      if (err) throw err;
+      console.log(`herbs written to ${filename}`);
+    }, 'utf8');
+
+  });
+}
+
+var argv = require('minimist')(process.argv.slice(2));
+let srcFileName = argv.src || 'herbs.json';
+let dstFileName = argv.dst || 'processed_herbs.json';
+let offset = parseInt(argv.offset || '0', 10);
+let hits = parseInt(argv.hits || '-1', 10);
+main(srcFileName, dstFileName, offset, hits);
 
 //console.log(_.map(processedHerbs, (h) => {
 //  return _.pick(h, 'name', 'attributes', 'nature',

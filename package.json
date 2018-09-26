@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "A simple Chinese herb database",
   "main": "main.js",
-  "dependencies": {},
+  "dependencies": {
+    "minimist": "^1.2.0"
+  },
   "devDependencies": {
     "cheerio": "1.0.0-rc.2",
     "csv-stringify": "^4.0.1",
